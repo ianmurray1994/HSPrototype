@@ -4,13 +4,53 @@ import openai
 import plotly.express as px
 import tiktoken
 import json
+from PIL import Image
+import os
 
 # --- Page Config ---
 st.set_page_config(page_title="HealthStay Tourism Lead Dashboard", layout="wide")
-st.title("🏥 HealthStay Tourism Lead Analysis Tool")
+
+# Get the absolute path to the logo
+current_dir = os.path.dirname(os.path.abspath(__file__))
+logo_path = os.path.join(current_dir, "static", "images", "logo.png")
+
+# --- Custom CSS ---
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] {
+        background-color: #070969;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+        color: white;
+    }
+    .stSelectbox label, .stMultiSelect label {
+        color: white !important;
+    }
+    .stSelectbox svg, .stMultiSelect svg {
+        color: white !important;
+    }
+    section[data-testid="stSidebar"] > div > div:first-child {
+        padding-top: 2rem;
+        background-color: #070969;
+    }
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: white;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- Header with Logo ---
+try:
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=300)
+    else:
+        st.error(f"Logo not found at: {logo_path}")
+except Exception as e:
+    st.error(f"Error loading logo: {str(e)}")
+    st.error("Please ensure the logo is a valid PNG image file")
 
 # --- Token Management Helpers ---
-MODEL_NAME = "gpt-4o"
+MODEL_NAME = "gpt-4"
 MAX_TOKENS = 5000
 
 def trim_messages(messages, max_tokens=MAX_TOKENS):
