@@ -42,12 +42,85 @@ st.markdown("""
 # --- Header with Logo ---
 try:
     if os.path.exists(logo_path):
-        st.image(logo_path, width=300)
+        logo = Image.open(logo_path)
+        st.image(logo, width=300)
     else:
         st.error(f"Logo not found at: {logo_path}")
 except Exception as e:
     st.error(f"Error loading logo: {str(e)}")
-    st.error("Please ensure the logo is a valid PNG image file")
+
+# --- Load Data ---
+try:
+    df = pd.read_csv("synthetic_leads_data.csv")
+except Exception as e:
+    st.error(f"Error loading data: {str(e)}")
+    st.stop()
+
+# --- Filters ---
+st.sidebar.header("Filter Options")
+status_filter = st.sidebar.multiselect("Filter by Status", options=df["Status"].unique())
+country_filter = st.sidebar.multiselect("Filter by Country", options=df["Country"].dropna().unique())
+agent_filter = st.sidebar.multiselect("Filter by Agent", options=df["Assigned To"].dropna().unique())
+
+# Apply filters
+filtered_df = df.copy()
+if status_filter:
+    filtered_df = filtered_df[filtered_df["Status"].isin(status_filter)]
+if country_filter:
+    filtered_df = filtered_df[filtered_df["Country"].isin(country_filter)]
+if agent_filter:
+    filtered_df = filtered_df[filtered_df["Assigned To"].isin(agent_filter)]
+
+# --- Data Preview ---
+st.subheader("🔍 Data Preview")
+st.dataframe(filtered_df, use_container_width=True)
+
+# --- Key Insights Charts ---
+st.subheader("📊 Key Insights")
+
+# Create two columns for the charts
+left_col, right_col = st.columns(2)
+
+with left_col:
+    # Chart 1: Lead Status Distribution
+    status_counts = filtered_df["Status"].value_counts()
+    fig1 = px.pie(
+        values=status_counts.values,
+        names=status_counts.index,
+        title="Lead Status Distribution"
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+    
+    # Chart 2: Top Countries by Lead Count
+    country_counts = filtered_df["Country"].value_counts().head(10)
+    fig2 = px.bar(
+        x=country_counts.index,
+        y=country_counts.values,
+        title="Top 10 Countries by Lead Count",
+        labels={"x": "Country", "y": "Number of Leads"}
+    )
+    st.plotly_chart(fig2, use_container_width=True)
+
+with right_col:
+    # Chart 3: Treatment Type Distribution
+    treatment_counts = filtered_df["Procedure Name"].value_counts()
+    fig3 = px.pie(
+        values=treatment_counts.values,
+        names=treatment_counts.index,
+        title="Treatment Type Distribution"
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+    
+    # Chart 4: Assigned Doctor Distribution
+    doctor_counts = filtered_df["Doctor Assigned"].value_counts().head(10)
+    fig4 = px.bar(
+        x=doctor_counts.index,
+        y=doctor_counts.values,
+        title="Top 10 Assigned Doctors",
+        labels={"x": "Doctor", "y": "Number of Leads"}
+    )
+    fig4.update_xaxes(tickangle=45)
+    st.plotly_chart(fig4, use_container_width=True)
 
 # --- Token Management Helpers ---
 MODEL_NAME = "gpt-4"
@@ -99,76 +172,9 @@ chart_tool = {
     }
 }
 
-try:
-    # --- Load Data ---
-    df = pd.read_csv("synthetic_leads_data.csv")
-
-    # --- Filters ---
-    st.sidebar.header("Filter Options")
-    status_filter = st.sidebar.multiselect("Filter by Status", options=df["Status"].unique())
-    country_filter = st.sidebar.multiselect("Filter by Country", options=df["Country"].dropna().unique())
-    agent_filter = st.sidebar.multiselect("Filter by Agent", options=df["Assigned To"].dropna().unique())
-
-    filtered_df = df.copy()
-    if status_filter:
-        filtered_df = filtered_df[filtered_df["Status"].isin(status_filter)]
-    if country_filter:
-        filtered_df = filtered_df[filtered_df["Country"].isin(country_filter)]
-    if agent_filter:
-        filtered_df = filtered_df[filtered_df["Assigned To"].isin(agent_filter)]
-
-    # --- Data Preview ---
-    st.subheader("🔍 Data Preview")
-    st.dataframe(filtered_df, use_container_width=True)
-
-    # --- Key Insights Charts ---
-    st.subheader("📊 Key Insights")
-    
-    # Create two columns for the charts
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Chart 1: Lead Status Distribution
-        status_counts = filtered_df["Status"].value_counts()
-        fig1 = px.pie(
-            values=status_counts.values,
-            names=status_counts.index,
-            title="Lead Status Distribution"
-        )
-        st.plotly_chart(fig1, use_container_width=True)
-        
-        # Chart 2: Top Countries by Lead Count
-        country_counts = filtered_df["Country"].value_counts().head(10)
-        fig2 = px.bar(
-            x=country_counts.index,
-            y=country_counts.values,
-            title="Top 10 Countries by Lead Count",
-            labels={"x": "Country", "y": "Number of Leads"}
-        )
-        st.plotly_chart(fig2, use_container_width=True)
-    
-    with col2:
-        # Chart 3: Treatment Type Distribution
-        treatment_counts = filtered_df["Procedure Name"].value_counts()
-        fig3 = px.pie(
-            values=treatment_counts.values,
-            names=treatment_counts.index,
-            title="Treatment Type Distribution"
-        )
-        st.plotly_chart(fig3, use_container_width=True)
-        
-        # Chart 4: Assigned Doctor Distribution
-        doctor_counts = filtered_df["Doctor Assigned"].value_counts().head(10)
-        fig4 = px.bar(
-            x=doctor_counts.index,
-            y=doctor_counts.values,
-            title="Top 10 Assigned Doctors",
-            labels={"x": "Doctor", "y": "Number of Leads"}
-        )
-        fig4.update_xaxes(tickangle=45)
-        st.plotly_chart(fig4, use_container_width=True)
-
-    if not filtered_df.empty:
+# --- Ask a Question Section ---
+if not filtered_df.empty:
+    try:
         # --- Ask a Question or Request a Chart ---
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         csv_data = filtered_df.head(50).to_csv(index=False)
@@ -184,75 +190,37 @@ try:
                 ]
                 trimmed_messages = trim_messages(messages)
 
-                try:
-                    response = client.chat.completions.create(
-                        model=MODEL_NAME,
-                        messages=trimmed_messages,
-                        tools=[chart_tool],
-                        tool_choice="auto"
-                    )
+                response = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=trimmed_messages,
+                    tools=[chart_tool],
+                    tool_choice="auto"
+                )
 
-                    choice = response.choices[0]
+                choice = response.choices[0]
 
-                    # If GPT used the tool (chart request)
-                    if hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
-                        tool_call = choice.message.tool_calls[0]
-                        chart_config = json.loads(tool_call.function.arguments)
-                        st.markdown(f"### 📊 {chart_config.get('title', 'Generated Chart')}")
-
-                        # Filter dataset
-                        df_to_plot = filtered_df.copy()
-                        for col, val in chart_config.get("filter", {}).items():
-                            df_to_plot = df_to_plot[df_to_plot[col] == val]
-
-                        if df_to_plot.empty:
-                            st.warning("⚠️ No data available for this chart. Try a different filter or country.")
-                        else:
-                            chart_type = chart_config["type"]
-                            x = chart_config["x"]
-                            y = chart_config.get("y")
-
-                            if chart_type == "pie":
-                                fig = px.pie(df_to_plot, names=x, title=chart_config["title"])
-                            elif chart_type == "bar":
-                                fig = px.bar(df_to_plot, x=x, y=y, title=chart_config["title"])
-                            elif chart_type == "line":
-                                fig = px.line(df_to_plot, x=x, y=y, title=chart_config["title"])
-                            else:
-                                st.warning("⚠️ Unsupported chart type.")
-                                st.json(chart_config)
-                                st.stop()
-
-                            st.plotly_chart(fig, use_container_width=True)
-
-                    else:
-                        # GPT answered with natural language (not a chart)
-                        st.markdown("### 🤖 Answer")
-                        st.write(choice.message.content)
-
-                except Exception as e:
-                    st.error(f"❌ An error occurred: {e}")
-
-        # --- Suggested Insights ---
-        if st.button("🔍 Generate Suggested Insights"):
-            with st.spinner("Analyzing your data..."):
-                insight_messages = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": f"Based on this dataset, suggest 5 insightful findings relevant to hospital lead management and medical tourism:\n{csv_data}"}
-                ]
-                try:
-                    response = client.chat.completions.create(
-                        model=MODEL_NAME,
-                        messages=insight_messages,
-                        max_tokens=600
-                    )
-                    st.markdown("### 📌 Suggested Insights")
-                    st.write(response.choices[0].message.content)
-                except Exception as e:
-                    st.error(f"❌ Failed to generate insights: {e}")
-
-    else:
-        st.warning("⚠️ No data available after filtering. Please adjust your filters.")
-
-except FileNotFoundError:
-    st.error("❌ Could not find the data file (synthetic_leads_data.csv). Please ensure it is in the correct location.")
+                # If GPT used the tool (chart request)
+                if hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
+                    tool_call = choice.message.tool_calls[0]
+                    chart_config = json.loads(tool_call.function.arguments)
+                    
+                    # Generate and display the requested chart
+                    if chart_config["type"] == "pie":
+                        fig = px.pie(
+                            filtered_df,
+                            names=chart_config["x"],
+                            title=chart_config["title"]
+                        )
+                    else:  # bar chart
+                        fig = px.bar(
+                            filtered_df,
+                            x=chart_config["x"],
+                            y=chart_config.get("y"),
+                            title=chart_config["title"]
+                        )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    # Display the text response
+                    st.write(choice.message.content)
+    except Exception as e:
+        st.error(f"Error processing question: {str(e)}")
