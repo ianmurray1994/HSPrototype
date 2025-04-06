@@ -121,6 +121,53 @@ try:
     st.subheader("🔍 Data Preview")
     st.dataframe(filtered_df, use_container_width=True)
 
+    # --- Key Insights Charts ---
+    st.subheader("📊 Key Insights")
+    
+    # Create two columns for the charts
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Chart 1: Lead Status Distribution
+        status_counts = filtered_df["Status"].value_counts()
+        fig1 = px.pie(
+            values=status_counts.values,
+            names=status_counts.index,
+            title="Lead Status Distribution"
+        )
+        st.plotly_chart(fig1, use_container_width=True)
+        
+        # Chart 2: Top Countries by Lead Count
+        country_counts = filtered_df["Country"].value_counts().head(10)
+        fig2 = px.bar(
+            x=country_counts.index,
+            y=country_counts.values,
+            title="Top 10 Countries by Lead Count",
+            labels={"x": "Country", "y": "Number of Leads"}
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+    
+    with col2:
+        # Chart 3: Lead Source Distribution
+        source_counts = filtered_df["Lead Source"].value_counts()
+        fig3 = px.pie(
+            values=source_counts.values,
+            names=source_counts.index,
+            title="Lead Source Distribution"
+        )
+        st.plotly_chart(fig3, use_container_width=True)
+        
+        # Chart 4: Treatment Type Distribution
+        treatment_counts = filtered_df["Treatment"].value_counts().head(10)
+        fig4 = px.bar(
+            x=treatment_counts.index,
+            y=treatment_counts.values,
+            title="Top 10 Requested Treatments",
+            labels={"x": "Treatment", "y": "Number of Leads"}
+        )
+        fig4.update_xaxes(tickangle=45)
+        st.plotly_chart(fig4, use_container_width=True)
+
     if not filtered_df.empty:
         # --- Ask a Question or Request a Chart ---
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
