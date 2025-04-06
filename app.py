@@ -148,22 +148,22 @@ try:
         st.plotly_chart(fig2, use_container_width=True)
     
     with col2:
-        # Chart 3: Lead Source Distribution
-        source_counts = filtered_df["Lead Source"].value_counts()
+        # Chart 3: Treatment Type Distribution
+        treatment_counts = filtered_df["Procedure Name"].value_counts()
         fig3 = px.pie(
-            values=source_counts.values,
-            names=source_counts.index,
-            title="Lead Source Distribution"
+            values=treatment_counts.values,
+            names=treatment_counts.index,
+            title="Treatment Type Distribution"
         )
         st.plotly_chart(fig3, use_container_width=True)
         
-        # Chart 4: Treatment Type Distribution
-        treatment_counts = filtered_df["Treatment"].value_counts().head(10)
+        # Chart 4: Assigned Doctor Distribution
+        doctor_counts = filtered_df["Doctor Assigned"].value_counts().head(10)
         fig4 = px.bar(
-            x=treatment_counts.index,
-            y=treatment_counts.values,
-            title="Top 10 Requested Treatments",
-            labels={"x": "Treatment", "y": "Number of Leads"}
+            x=doctor_counts.index,
+            y=doctor_counts.values,
+            title="Top 10 Assigned Doctors",
+            labels={"x": "Doctor", "y": "Number of Leads"}
         )
         fig4.update_xaxes(tickangle=45)
         st.plotly_chart(fig4, use_container_width=True)
